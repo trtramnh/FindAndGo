@@ -1,29 +1,113 @@
 import { useMemo, useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import { activities, formatPrice, normalizeText, venues } from '../data/venues';
 import { Brand, Icon, Modal, VenueImage } from './ui';
 
 const STORAGE_KEY = 'findandgo-demo-favorites';
+
 function loadFavorites() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    return Array.isArray(saved) ? saved.filter((id) => venues.some((venue) => venue.id === id)) : [];
-  } catch { return []; }
+    return Array.isArray(saved)
+      ? saved.filter((id) => venues.some((venue) => venue.id === id))
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function FloatingCard({ position, icon, title, subtitle }) {
-  return <div className={`preview-float preview-float-${position}`} aria-hidden="true"><span className="float-icon"><Icon name={icon} size={19} /></span><div><strong>{title}</strong><span>{subtitle}</span></div></div>;
+  return (
+    <div className={`preview-float preview-float-${position}`} aria-hidden="true">
+      <span className="float-icon">
+        <Icon name={icon} size={19} />
+      </span>
+      <div>
+        <strong>{title}</strong>
+        <span>{subtitle}</span>
+      </div>
+    </div>
+  );
 }
 
-function VenueCard({ venue, saved, onSave, onDetails }) {
-  return <article className="venue-card">
-    <div className="venue-photo"><VenueImage src={venue.image} alt={venue.imageAlt} width="640" height="440" /><span className="venue-photo-tag"><Icon name={venue.tagIcon} size={12} />{venue.tag}</span><button className={`favorite-button ${saved ? 'is-saved' : ''}`} onClick={() => onSave(venue.id)} aria-label={`${saved ? 'Bỏ lưu' : 'Lưu'} ${venue.name}`} aria-pressed={saved}><Icon name="heart" size={17} /></button></div>
-    <div className="venue-content"><span className="venue-category">{venue.category}</span><h3>{venue.name}</h3><p className="venue-description">{venue.description}</p><div className="venue-amenities">{venue.wifi && <span><Icon name="wifi" size={13} />Wi-Fi</span>}{venue.outlets && <span><Icon name="plug" size={13} />Ổ cắm</span>}<span><Icon name="users" size={13} />{venue.people} người</span></div><div className="venue-price">~ {formatPrice(venue.priceMin)}–{formatPrice(venue.priceMax)}đ<span> / người</span></div><p className="venue-location"><Icon name="pin" size={12} />{venue.area}</p><button className="venue-details" onClick={() => onDetails(venue)}>Xem chi tiết<Icon name="arrow-up-right" size={14} /></button></div>
-  </article>;
+function VenueCard({ venue, saved, onSave, onDetails, lang, strings }) {
+  const sc = strings.showcase;
+  const desc = lang === 'vi' ? venue.descriptionVi : venue.description;
+  const tag = lang === 'vi' ? venue.tagVi : venue.tag;
+  const area = lang === 'vi' ? venue.areaVi : venue.area;
+
+  return (
+    <article className="venue-card">
+      <div className="venue-photo">
+        <VenueImage
+          src={venue.image}
+          alt={lang === 'vi' ? venue.imageAltVi : venue.imageAlt}
+          width="640"
+          height="440"
+        />
+        <span className="venue-photo-tag">
+          <Icon name={venue.tagIcon} size={12} />
+          {tag}
+        </span>
+        <button
+          className={`favorite-button ${saved ? 'is-saved' : ''}`}
+          onClick={() => onSave(venue.id)}
+          aria-label={`${saved ? 'Remove' : 'Save'} ${venue.name}`}
+          aria-pressed={saved}
+        >
+          <Icon name="heart" size={17} />
+        </button>
+      </div>
+
+      <div className="venue-content">
+        <span className="venue-category">{venue.category}</span>
+        <h3>{venue.name}</h3>
+        <p className="venue-description">{desc}</p>
+
+        <div className="venue-amenities">
+          {venue.wifi && (
+            <span>
+              <Icon name="wifi" size={13} />
+              {sc.wifi}
+            </span>
+          )}
+          {venue.outlets && (
+            <span>
+              <Icon name="plug" size={13} />
+              {sc.outlets}
+            </span>
+          )}
+          <span>
+            <Icon name="users" size={13} />
+            {venue.people} {lang === 'vi' ? 'người' : 'people'}
+          </span>
+        </div>
+
+        <div className="venue-price">
+          ~ {formatPrice(venue.priceMin, lang)}–{formatPrice(venue.priceMax, lang)} {lang === 'vi' ? 'đ' : 'VND'}
+          <span> {sc.perPerson}</span>
+        </div>
+
+        <p className="venue-location">
+          <Icon name="pin" size={12} />
+          {area}
+        </p>
+
+        <button className="venue-details" onClick={() => onDetails(venue)}>
+          {sc.viewDetails}
+          <Icon name="arrow-up-right" size={14} />
+        </button>
+      </div>
+    </article>
+  );
 }
 
-export default function ProductPreview() {
+export default function ProductPreview({ externalActivity, onNavigate }) {
+  const { lang, strings } = useLanguage();
+  const sc = strings.showcase;
+
   const [query, setQuery] = useState('');
-  const [activity, setActivity] = useState('');
+  const [activity, setActivity] = useState(externalActivity || '');
   const [budget, setBudget] = useState('');
   const [distance, setDistance] = useState('');
   const [people, setPeople] = useState('');
@@ -35,71 +119,512 @@ export default function ProductPreview() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [announcement, setAnnouncement] = useState('');
 
-  // Lọc hoàn toàn tại trình duyệt; không gọi API hay lấy vị trí thật.
-  const matches = useMemo(() => venues.filter((venue) => {
-    const searchable = normalizeText([venue.name, venue.category, venue.description, venue.category.startsWith('Coffee') ? 'quán cà phê' : 'nhà hàng', ...venue.activities.map((id) => activities.find((item) => item.id === id)?.label)].join(' '));
-    return (!query.trim() || searchable.includes(normalizeText(query.trim())))
-      && (!activity || venue.activities.includes(activity))
-      && (!budget || venue.priceMax < Number(budget))
-      && (!distance || venue.distanceBand <= Number(distance))
-      && (!people || venue.people >= Number(people))
-      && (!wifi || venue.wifi) && (!outlets || venue.outlets)
-      && (view !== 'favorites' || favorites.includes(venue.id))
-      && (view !== 'nearby' || venue.distanceBand <= 2);
-  }), [query, activity, budget, distance, people, wifi, outlets, view, favorites]);
+  // Update activity if changed from outside (e.g. Purpose section click)
+  useMemo(() => {
+    if (externalActivity !== undefined && externalActivity !== activity) {
+      setActivity(externalActivity);
+    }
+  }, [externalActivity]);
 
-  const resetFilters = () => { setQuery(''); setActivity(''); setBudget(''); setDistance(''); setPeople(''); setWifi(false); setOutlets(false); };
-  const applyExample = () => { resetFilters(); setView('explore'); setActivity('study'); setBudget('70000'); setPeople('4'); setWifi(true); setOutlets(true); setAnnouncement('Đã áp dụng ví dụ: học nhóm 4 người, dưới 70.000đ, có Wi-Fi và ổ cắm.'); };
+  const matches = useMemo(() => {
+    return venues.filter((venue) => {
+      const activityLabels = venue.activities.map((id) => {
+        const item = activities.find((a) => a.id === id);
+        return item ? `${item.label} ${item.labelVi}` : '';
+      });
+
+      const searchable = normalizeText(
+        [
+          venue.name,
+          venue.category,
+          venue.description,
+          venue.descriptionVi,
+          venue.area,
+          venue.areaVi,
+          venue.category.startsWith('Coffee') ? 'coffee cafe quan ca phe' : 'food restaurant quan an',
+          ...activityLabels,
+        ].join(' ')
+      );
+
+      return (
+        (!query.trim() || searchable.includes(normalizeText(query.trim()))) &&
+        (!activity || venue.activities.includes(activity)) &&
+        (!budget || venue.priceMax < Number(budget)) &&
+        (!distance || venue.distanceBand <= Number(distance)) &&
+        (!people || venue.people >= Number(people)) &&
+        (!wifi || venue.wifi) &&
+        (!outlets || venue.outlets) &&
+        (view !== 'favorites' || favorites.includes(venue.id)) &&
+        (view !== 'nearby' || venue.distanceBand <= 2)
+      );
+    });
+  }, [query, activity, budget, distance, people, wifi, outlets, view, favorites]);
+
+  const resetFilters = () => {
+    setQuery('');
+    setActivity('');
+    setBudget('');
+    setDistance('');
+    setPeople('');
+    setWifi(false);
+    setOutlets(false);
+  };
+
+  const applyExample = () => {
+    resetFilters();
+    setView('explore');
+    setActivity('study');
+    setBudget('70000');
+    setPeople('4');
+    setWifi(true);
+    setOutlets(true);
+    setAnnouncement(
+      lang === 'vi'
+        ? 'Đã áp dụng ví dụ: học nhóm 4 người, dưới 70.000đ, có Wi-Fi và ổ cắm.'
+        : 'Applied example: 4-person study session, under 70,000 VND, with Wi-Fi & outlets.'
+    );
+  };
+
   const toggleFavorite = (id) => {
-    const next = favorites.includes(id) ? favorites.filter((item) => item !== id) : [...favorites, id];
+    const next = favorites.includes(id)
+      ? favorites.filter((item) => item !== id)
+      : [...favorites, id];
     setFavorites(next);
-    const venueName = venues.find((venue) => venue.id === id).name;
-    let message = next.includes(id) ? `Đã lưu ${venueName} trên thiết bị này.` : `Đã bỏ lưu ${venueName}.`;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); }
-    catch { message += ' Trình duyệt không cho phép lưu lâu dài; thay đổi chỉ được giữ trong phiên này.'; }
+    const venueObj = venues.find((v) => v.id === id);
+    const venueName = venueObj ? venueObj.name : '';
+    let message = next.includes(id)
+      ? (lang === 'vi' ? `Đã lưu ${venueName} trên thiết bị này.` : `Saved ${venueName} locally.`)
+      : (lang === 'vi' ? `Đã bỏ lưu ${venueName}.` : `Removed ${venueName}.`);
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      message +=
+        lang === 'vi'
+          ? ' Trình duyệt không cho phép lưu lâu dài; chỉ giữ trong phiên này.'
+          : ' Local storage not permitted; retained for this session only.';
+    }
     setAnnouncement(message);
   };
-  const changeView = (nextView) => { setView(nextView); resetFilters(); };
-  const hasFilters = Boolean(query || activity || budget || distance || people || wifi || outlets);
 
-  return <div className="product-preview" id="explore" role="region" aria-label="Bản trải nghiệm khám phá FIND&GO">
-    <FloatingCard position="top" icon="sliders" title="Tìm theo nhu cầu" subtitle="Học nhóm · 4 người · Có Wi-Fi" />
-    <FloatingCard position="bottom" icon="wallet" title="Phù hợp ngân sách" subtitle="Gợi ý theo mức chi bạn chọn" />
-    <FloatingCard position="side" icon="heart" title="Lưu địa điểm yêu thích" subtitle="Xem lại khi cần" />
-    <div className="preview-label" aria-hidden="true"><span />MỘT NƠI CHO MỌI CUỘC HẸN</div>
-    <div className="browser-frame">
-      <div className="browser-chrome"><div className="browser-dots" aria-hidden="true"><i /><i /><i /></div><div className="browser-address"><Icon name="lock" size={10} />findandgo.app · Khám phá</div><span className="chrome-extra"><Icon name="sliders" size={14} /></span></div>
-      <div className="discovery-app">
-        <aside className="preview-sidebar"><div className="sidebar-brand"><Brand /></div><p className="sidebar-label">KHÔNG GIAN CỦA BẠN</p><nav aria-label="Điều hướng bản demo">
-          {[['explore', 'compass', 'Khám phá'], ['nearby', 'pin', 'Địa điểm gần đây'], ['favorites', 'heart', 'Yêu thích']].map(([id, icon, label]) => <button key={id} className={view === id ? 'active' : ''} onClick={() => changeView(id)} aria-pressed={view === id} title={label}><Icon name={icon} size={17} /><span>{label}</span>{id === 'favorites' && favorites.length > 0 && <small>{favorites.length}</small>}</button>)}
-          <button onClick={() => setProfileOpen(true)} title="Hồ sơ bản demo"><Icon name="user" size={17} /><span>Hồ sơ</span></button>
-        </nav><div className="sidebar-tip"><Icon name="sparkles" size={22} /><strong>Đi đâu cũng có gu.</strong><p>Bắt đầu từ điều bạn thích, tìm một nơi thật phù hợp.</p><span>Find your place.<br />Go your way.</span></div><div className="sidebar-user"><span className="avatar"><Icon name="user" size={16} /></span><div><strong>Người khám phá</strong><span>Chế độ trải nghiệm</span></div><Icon name="chevron-right" size={14} /></div></aside>
-        <div className="preview-main">
-          <div className="preview-heading"><div><p>MỘT NGÀY MỚI, MỘT ĐIỂM HẸN MỚI</p><h2>Bạn muốn đi đâu hôm nay?</h2></div><span className="demo-badge"><span />Bản demo</span></div>
-          <div className="preview-search"><Icon name="search" size={18} /><input id="venue-search" type="search" aria-label="Tìm địa điểm mẫu" placeholder="Tìm quán cà phê, nhà hàng, địa điểm..." value={query} onChange={(event) => setQuery(event.target.value)} /><span className="search-decoration" aria-hidden="true"><Icon name="sliders" size={16} /></span></div>
-          <div className="category-chips" role="group" aria-label="Mục đích chuyến đi">{activities.map((item) => <button key={item.id} className={activity === item.id ? 'active' : ''} aria-pressed={activity === item.id} onClick={() => setActivity(activity === item.id ? '' : item.id)}><Icon name={item.icon} size={15} />{item.label}</button>)}</div>
-          <div className="filter-row" role="group" aria-label="Bộ lọc địa điểm mẫu">
-            <label className={`select-filter ${distance ? 'is-selected' : ''}`}><Icon name="pin" size={13} /><select aria-label="Khoảng cách minh họa" value={distance} onChange={(event) => setDistance(event.target.value)}><option value="">Khoảng cách</option><option value="2">Trong 2 km (mẫu)</option><option value="5">Trong 5 km (mẫu)</option></select><Icon name="chevron-down" size={12} /></label>
-            <label className={`select-filter ${budget ? 'is-selected' : ''}`}><Icon name="wallet" size={13} /><select aria-label="Ngân sách mỗi người" value={budget} onChange={(event) => setBudget(event.target.value)}><option value="">Ngân sách</option><option value="50000">Dưới 50.000đ</option><option value="70000">Dưới 70.000đ</option><option value="100000">Dưới 100.000đ</option></select><Icon name="chevron-down" size={12} /></label>
-            <label className={`select-filter ${people ? 'is-selected' : ''}`}><Icon name="users" size={13} /><select aria-label="Số người" value={people} onChange={(event) => setPeople(event.target.value)}><option value="">Số người</option><option value="1">1 người</option><option value="4">4 người</option><option value="6">6 người</option><option value="8">8 người</option></select><Icon name="chevron-down" size={12} /></label>
-            <button className={`toggle-filter ${wifi ? 'is-selected' : ''}`} aria-pressed={wifi} onClick={() => setWifi(!wifi)}><Icon name="wifi" size={13} />Wi-Fi</button><button className={`toggle-filter ${outlets ? 'is-selected' : ''}`} aria-pressed={outlets} onClick={() => setOutlets(!outlets)}><Icon name="plug" size={13} />Ổ cắm</button>
+  const changeView = (nextView) => {
+    setView(nextView);
+    resetFilters();
+  };
+
+  const hasFilters = Boolean(
+    query || activity || budget || distance || people || wifi || outlets
+  );
+
+  return (
+    <div
+      className="product-preview"
+      id="explore"
+      role="region"
+      aria-label={lang === 'vi' ? 'Bản trải nghiệm khám phá FIND&GO' : 'FIND&GO Discovery Interactive Demo'}
+    >
+      <FloatingCard
+        position="top"
+        icon="sliders"
+        title={lang === 'vi' ? 'Tìm theo nhu cầu' : 'Purpose Matching'}
+        subtitle={lang === 'vi' ? 'Học nhóm · 4 người · Wi-Fi' : 'Study Group · 4 People · Wi-Fi'}
+      />
+      <FloatingCard
+        position="bottom"
+        icon="wallet"
+        title={lang === 'vi' ? 'Phù hợp ngân sách' : 'Strict Budget Tiers'}
+        subtitle={lang === 'vi' ? 'Gợi ý theo mức chi bạn chọn' : 'Clear price ranges per person'}
+      />
+      <FloatingCard
+        position="side"
+        icon="heart"
+        title={lang === 'vi' ? 'Lưu địa điểm yêu thích' : 'Save & Compare'}
+        subtitle={lang === 'vi' ? 'Xem lại khi cần' : 'Access offline on this device'}
+      />
+
+      <div className="preview-label" aria-hidden="true">
+        <span />
+        {sc.sidebarQuote} · {sc.sidebarSub}
+      </div>
+
+      <div className="browser-frame">
+        <div className="browser-chrome">
+          <div className="browser-dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
           </div>
-          <div className="results-heading"><div><h3>{view === 'favorites' ? 'Địa điểm đã lưu' : view === 'nearby' ? 'Quanh bạn · minh họa' : 'Một vài nơi dành cho bạn'}<span aria-live="polite">{matches.length} địa điểm mẫu</span></h3><p>{hasFilters ? 'Những gợi ý theo tiêu chí bạn vừa chọn.' : 'Lấy cảm hứng cho điểm hẹn tiếp theo của bạn.'}</p></div>{hasFilters && <button className="reset-filters" onClick={resetFilters}>Xóa bộ lọc<Icon name="x" size={12} /></button>}</div>
-          <div className="venue-grid">{matches.map((venue) => <VenueCard key={venue.id} venue={venue} saved={favorites.includes(venue.id)} onSave={toggleFavorite} onDetails={setSelectedVenue} />)}</div>
-          {matches.length === 0 && <div className="empty-results"><Icon name={view === 'favorites' ? 'heart' : 'search'} size={30} /><h3>{view === 'favorites' && favorites.length === 0 ? 'Lưu một nơi bạn muốn ghé' : 'Chưa có địa điểm mẫu phù hợp'}</h3><p>{view === 'favorites' && favorites.length === 0 ? 'Chạm vào trái tim trên thẻ địa điểm để lưu vào danh sách này.' : 'Thử bớt một tiêu chí hoặc tìm bằng tên địa điểm.'}</p><button className="btn btn-secondary" onClick={() => { resetFilters(); if (view === 'favorites' && favorites.length === 0) setView('explore'); }}>{view === 'favorites' && favorites.length === 0 ? 'Khám phá địa điểm' : 'Xóa bộ lọc'}</button></div>}
-          <div className="example-search"><span><Icon name="sparkles" size={15} /><span>Học nhóm 4 người, dưới 70.000đ?</span></span><button onClick={applyExample}>Thử tìm ngay<Icon name="arrow-right" size={14} /></button></div>
-          <p className="demo-note"><Icon name="info" size={12} />Địa điểm, hình ảnh, giá, khoảng cách và tiện ích chỉ để minh họa, chưa được xác minh.</p>
-          <p className="sr-only" role="status">{announcement}</p>
+          <div className="browser-address">
+            <Icon name="lock" size={10} />
+            {sc.browserAddress}
+          </div>
+          <span className="chrome-extra">
+            <Icon name="sliders" size={14} />
+          </span>
+        </div>
+
+        <div className="discovery-app">
+          {/* App Sidebar */}
+          <aside className="preview-sidebar">
+            <div className="sidebar-brand">
+              <Brand size={26} />
+            </div>
+            <p className="sidebar-label">{sc.sidebarTitle}</p>
+            <nav aria-label="Demo Navigation">
+              <button
+                className={view === 'explore' ? 'active' : ''}
+                onClick={() => changeView('explore')}
+                aria-pressed={view === 'explore'}
+                title={sc.navExplore}
+              >
+                <Icon name="compass" size={17} />
+                <span>{sc.navExplore}</span>
+              </button>
+              <button
+                className={view === 'nearby' ? 'active' : ''}
+                onClick={() => changeView('nearby')}
+                aria-pressed={view === 'nearby'}
+                title={sc.navNearby}
+              >
+                <Icon name="pin" size={17} />
+                <span>{sc.navNearby}</span>
+              </button>
+              <button
+                className={view === 'favorites' ? 'active' : ''}
+                onClick={() => changeView('favorites')}
+                aria-pressed={view === 'favorites'}
+                title={sc.navFavorites}
+              >
+                <Icon name="heart" size={17} />
+                <span>{sc.navFavorites}</span>
+                {favorites.length > 0 && <small>{favorites.length}</small>}
+              </button>
+              <button
+                onClick={() => setProfileOpen(true)}
+                title={sc.navProfile}
+              >
+                <Icon name="user" size={17} />
+                <span>{sc.navProfile}</span>
+              </button>
+            </nav>
+
+            <div className="sidebar-tip">
+              <Icon name="sparkles" size={22} />
+              <strong>{sc.sidebarQuote}</strong>
+              <p>{sc.sidebarSub}</p>
+              <span>
+                FIND&amp;GO
+                <br />
+                {strings.footer.tagline}
+              </span>
+            </div>
+
+            <div className="sidebar-user">
+              <span className="avatar">
+                <Icon name="user" size={16} />
+              </span>
+              <div>
+                <strong>{sc.userLabel}</strong>
+                <span>{sc.userStatus}</span>
+              </div>
+              <Icon name="chevron-right" size={14} />
+            </div>
+          </aside>
+
+          {/* App Main Body */}
+          <div className="preview-main">
+            <div className="preview-heading">
+              <div>
+                <p>{sc.greetingSub}</p>
+                <h2>{sc.greetingHeading}</h2>
+              </div>
+              <span className="demo-badge">
+                <span />
+                {sc.demoBadge}
+              </span>
+            </div>
+
+            {/* Search Input */}
+            <div className="preview-search">
+              <Icon name="search" size={18} />
+              <input
+                id="venue-search"
+                type="search"
+                aria-label={sc.searchPlaceholder}
+                placeholder={sc.searchPlaceholder}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <span className="search-decoration" aria-hidden="true">
+                <Icon name="sliders" size={16} />
+              </span>
+            </div>
+
+            {/* Category / Activity Chips */}
+            <div className="category-chips" role="group" aria-label="Purpose / Activity Filter">
+              {activities.map((item) => (
+                <button
+                  key={item.id}
+                  className={activity === item.id ? 'active' : ''}
+                  aria-pressed={activity === item.id}
+                  onClick={() => setActivity(activity === item.id ? '' : item.id)}
+                >
+                  <Icon name={item.icon} size={15} />
+                  <span>{lang === 'vi' ? item.labelVi : item.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Combined Filters Row */}
+            <div className="filter-row" role="group" aria-label="Venue Filter Criteria">
+              <label className={`select-filter ${distance ? 'is-selected' : ''}`}>
+                <Icon name="pin" size={13} />
+                <select
+                  aria-label={sc.filterDistance}
+                  value={distance}
+                  onChange={(e) => setDistance(e.target.value)}
+                >
+                  <option value="">{sc.filterDistance}</option>
+                  <option value="2">{sc.filterDistanceOpt1}</option>
+                  <option value="5">{sc.filterDistanceOpt2}</option>
+                </select>
+                <Icon name="chevron-down" size={12} />
+              </label>
+
+              <label className={`select-filter ${budget ? 'is-selected' : ''}`}>
+                <Icon name="wallet" size={13} />
+                <select
+                  aria-label={sc.filterBudget}
+                  value={budget}
+                  onChange={(e) => setBudget(e.target.value)}
+                >
+                  <option value="">{sc.filterBudget}</option>
+                  <option value="50000">{sc.filterBudgetOpt1}</option>
+                  <option value="70000">{sc.filterBudgetOpt2}</option>
+                  <option value="100000">{sc.filterBudgetOpt3}</option>
+                </select>
+                <Icon name="chevron-down" size={12} />
+              </label>
+
+              <label className={`select-filter ${people ? 'is-selected' : ''}`}>
+                <Icon name="users" size={13} />
+                <select
+                  aria-label={sc.filterPeople}
+                  value={people}
+                  onChange={(e) => setPeople(e.target.value)}
+                >
+                  <option value="">{sc.filterPeople}</option>
+                  <option value="1">{sc.filterPeopleOpt1}</option>
+                  <option value="4">{sc.filterPeopleOpt2}</option>
+                  <option value="6">{sc.filterPeopleOpt3}</option>
+                  <option value="8">{sc.filterPeopleOpt4}</option>
+                </select>
+                <Icon name="chevron-down" size={12} />
+              </label>
+
+              <button
+                className={`toggle-filter ${wifi ? 'is-selected' : ''}`}
+                aria-pressed={wifi}
+                onClick={() => setWifi(!wifi)}
+              >
+                <Icon name="wifi" size={13} />
+                <span>{sc.wifi}</span>
+              </button>
+
+              <button
+                className={`toggle-filter ${outlets ? 'is-selected' : ''}`}
+                aria-pressed={outlets}
+                onClick={() => setOutlets(!outlets)}
+              >
+                <Icon name="plug" size={13} />
+                <span>{sc.outlets}</span>
+              </button>
+            </div>
+
+            {/* Results Header */}
+            <div className="results-heading">
+              <div>
+                <h3>
+                  {view === 'favorites'
+                    ? sc.resultsSavedTitle
+                    : view === 'nearby'
+                    ? sc.resultsNearbyTitle
+                    : sc.resultsDefaultTitle}
+                  <span aria-live="polite">
+                    {matches.length} {sc.resultsCount}
+                  </span>
+                </h3>
+                <p>{hasFilters ? sc.hasFiltersDesc : sc.defaultDesc}</p>
+              </div>
+
+              {hasFilters && (
+                <button className="reset-filters" onClick={resetFilters}>
+                  {sc.resetFilters}
+                  <Icon name="x" size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Venue Cards Grid */}
+            <div className="venue-grid">
+              {matches.map((venue) => (
+                <VenueCard
+                  key={venue.id}
+                  venue={venue}
+                  saved={favorites.includes(venue.id)}
+                  onSave={toggleFavorite}
+                  onDetails={setSelectedVenue}
+                  lang={lang}
+                  strings={strings}
+                />
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {matches.length === 0 && (
+              <div className="empty-results">
+                <Icon name={view === 'favorites' ? 'heart' : 'search'} size={32} />
+                <h3>
+                  {view === 'favorites' && favorites.length === 0
+                    ? sc.emptyFavTitle
+                    : sc.emptyTitle}
+                </h3>
+                <p>
+                  {view === 'favorites' && favorites.length === 0
+                    ? sc.emptyFavDesc
+                    : sc.emptyDesc}
+                </p>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    resetFilters();
+                    if (view === 'favorites' && favorites.length === 0) setView('explore');
+                  }}
+                >
+                  {view === 'favorites' && favorites.length === 0
+                    ? sc.emptyBtnExplore
+                    : sc.emptyBtnReset}
+                </button>
+              </div>
+            )}
+
+            {/* Quick Example Search */}
+            <div className="example-search">
+              <span>
+                <Icon name="sparkles" size={15} />
+                <span>{sc.exampleQuery}</span>
+              </span>
+              <button onClick={applyExample}>
+                <span>{sc.exampleBtn}</span>
+                <Icon name="arrow-right" size={14} />
+              </button>
+            </div>
+
+            <p className="demo-note">
+              <Icon name="info" size={12} />
+              {sc.disclaimer}
+            </p>
+            <p className="sr-only" role="status">
+              {announcement}
+            </p>
+          </div>
         </div>
       </div>
-    </div><div className="preview-glow" aria-hidden="true" />
-    {selectedVenue && <Modal title={selectedVenue.name} onClose={() => setSelectedVenue(null)}>
-      <VenueImage className="modal-venue-image" src={selectedVenue.image} alt={selectedVenue.imageAlt} width="640" height="400" />
-      <span className="modal-demo-label">ĐỊA ĐIỂM MINH HỌA · {selectedVenue.category}</span><p>{selectedVenue.details}</p>
-      <div className="modal-facts"><span><Icon name="wallet" size={18} />~ {formatPrice(selectedVenue.priceMin)}–{formatPrice(selectedVenue.priceMax)}đ / người</span><span><Icon name="users" size={18} />Nhóm tối đa {selectedVenue.people} người (mẫu)</span><span><Icon name="pin" size={18} />{selectedVenue.area}</span>{selectedVenue.wifi && <span><Icon name="wifi" size={18} />Có Wi-Fi (mẫu)</span>}{selectedVenue.outlets && <span><Icon name="plug" size={18} />Có ổ cắm (mẫu)</span>}</div>
-      <p className="modal-disclaimer">Đây là dữ liệu thử nghiệm, không phải địa điểm đã được xác minh. Hình ảnh mang tính minh họa.</p>
-      <button className="btn btn-primary" aria-pressed={favorites.includes(selectedVenue.id)} onClick={() => toggleFavorite(selectedVenue.id)}><Icon name="heart" size={17} />{favorites.includes(selectedVenue.id) ? 'Đã lưu · Bỏ lưu địa điểm' : 'Lưu địa điểm này'}</button>
-    </Modal>}
-    {profileOpen && <Modal title="Hồ sơ người khám phá" onClose={() => setProfileOpen(false)}><div className="info-modal-icon"><Icon name="user" size={28} /></div><p>Bạn đang dùng bản demo, chưa cần tạo tài khoản. Tính năng hồ sơ sẽ được phát triển trong phiên bản tiếp theo.</p><p>Danh sách yêu thích được lưu riêng trong trình duyệt trên thiết bị này.</p><button className="btn btn-primary" onClick={() => { setProfileOpen(false); changeView('favorites'); }}>Xem địa điểm đã lưu<Icon name="heart" size={17} /></button></Modal>}
-  </div>;
+
+      <div className="preview-glow" aria-hidden="true" />
+
+      {/* Venue Detail Modal */}
+      {selectedVenue && (
+        <Modal title={selectedVenue.name} onClose={() => setSelectedVenue(null)}>
+          <VenueImage
+            className="modal-venue-image"
+            src={selectedVenue.image}
+            alt={lang === 'vi' ? selectedVenue.imageAltVi : selectedVenue.imageAlt}
+            width="640"
+            height="400"
+          />
+          <span className="modal-demo-label">
+            {lang === 'vi' ? 'ĐỊA ĐIỂM MINH HỌA' : 'DEMO VENUE'} · {selectedVenue.category}
+          </span>
+          <p>{lang === 'vi' ? selectedVenue.detailsVi : selectedVenue.details}</p>
+
+          <div className="modal-facts">
+            <span>
+              <Icon name="wallet" size={18} />~{' '}
+              {formatPrice(selectedVenue.priceMin, lang)}–
+              {formatPrice(selectedVenue.priceMax, lang)}{' '}
+              {lang === 'vi' ? 'đ' : 'VND'} {sc.perPerson}
+            </span>
+            <span>
+              <Icon name="users" size={18} />
+              {sc.maxPeople} {selectedVenue.people}
+            </span>
+            <span>
+              <Icon name="pin" size={18} />
+              {lang === 'vi' ? selectedVenue.areaVi : selectedVenue.area}
+            </span>
+            {selectedVenue.wifi && (
+              <span>
+                <Icon name="wifi" size={18} />
+                {lang === 'vi' ? `Có sẵn ${sc.wifi}` : `${sc.wifi} available`}
+              </span>
+            )}
+            {selectedVenue.outlets && (
+              <span>
+                <Icon name="plug" size={18} />
+                {lang === 'vi' ? `Có sẵn ${sc.outlets}` : `${sc.outlets} available`}
+              </span>
+            )}
+          </div>
+
+          <p className="modal-disclaimer">{sc.modalVerifiedNotice}</p>
+
+          <button
+            className="btn btn-primary"
+            aria-pressed={favorites.includes(selectedVenue.id)}
+            onClick={() => toggleFavorite(selectedVenue.id)}
+          >
+            <Icon name="heart" size={17} />
+            <span>
+              {favorites.includes(selectedVenue.id)
+                ? sc.savedVenue
+                : sc.saveVenue}
+            </span>
+          </button>
+        </Modal>
+      )}
+
+      {/* Profile Info Modal */}
+      {profileOpen && (
+        <Modal
+          title={lang === 'vi' ? 'Hồ sơ người dùng' : 'Explorer Profile'}
+          onClose={() => setProfileOpen(false)}
+        >
+          <div className="info-modal-icon">
+            <Icon name="user" size={28} />
+          </div>
+          <p>
+            {lang === 'vi'
+              ? 'Bạn đang trải nghiệm chế độ demo, chưa cần tạo tài khoản. Tính năng đồng bộ đám mây sẽ khả dụng trong phiên bản tiếp theo.'
+              : 'You are using the interactive guest demo. Cloud synchronization and personalized profiles will be available in the upcoming release.'}
+          </p>
+          <p>
+            {lang === 'vi'
+              ? 'Danh sách yêu thích được lưu cục bộ trong trình duyệt trên thiết bị này.'
+              : 'Your bookmarked venues are safely stored locally in your browser.'}
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              setProfileOpen(false);
+              changeView('favorites');
+            }}
+          >
+            <span>{sc.resultsSavedTitle}</span>
+            <Icon name="heart" size={17} />
+          </button>
+        </Modal>
+      )}
+    </div>
+  );
 }

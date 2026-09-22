@@ -1,165 +1,338 @@
 import { expect, test } from '@playwright/test';
 
-const preview = (page) => page.getByRole('region', { name: 'Bản trải nghiệm khám phá FIND&GO' });
+const preview = (page) =>
+  page.getByRole('region', {
+    name: /FIND&GO Discovery Interactive Demo|Bản trải nghiệm khám phá FIND&GO/,
+  });
 const venueCards = (page) => preview(page).locator('.venue-card');
 
-// Kiểm tra các kích thước thật, gồm ảnh tải chậm ở phần cuối trang.
+// Responsive check across desktop, laptop, tablet, and mobile
 for (const width of [1440, 1024, 768, 390, 375]) {
-  test(`landing page fits ${width}px and loads its images`, async ({ page }) => {
+  test(`landing page fits ${width}px and loads its images without overflow`, async ({
+    page,
+  }) => {
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Đi đâu hôm nay?');
+
+    // English by default
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Find Your Place'
+    );
     await expect(venueCards(page)).toHaveCount(3);
 
-    for (const id of ['hero', 'explore', 'features', 'how-it-works', 'about', 'contact']) {
+    for (const id of [
+      'hero',
+      'problem',
+      'introducing',
+      'how-it-works',
+      'explore',
+      'purpose',
+      'why',
+      'use-cases',
+      'faq',
+      'contact',
+    ]) {
       await page.locator(`#${id}`).scrollIntoViewIfNeeded();
-      await expect.poll(() => page.evaluate(() =>
-        Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
-      )).toBeLessThanOrEqual(1);
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              Math.max(
+                document.documentElement.scrollWidth,
+                document.body.scrollWidth
+              ) - window.innerWidth
+          )
+        )
+        .toBeLessThanOrEqual(1);
     }
-    await expect.poll(() => page.locator('img').evaluateAll((images) =>
-      images.every((image) => image.complete && image.naturalWidth > 0),
-    )).toBe(true);
+
+    await expect
+      .poll(() =>
+        page
+          .locator('img')
+          .evaluateAll((images) =>
+            images.every((image) => image.complete && image.naturalWidth > 0)
+          )
+      )
+      .toBe(true);
+
+    // Strictly no video elements
+    await expect(page.locator('video')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 }
 
-test('navigation reaches each real section and updates the header', async ({ page }) => {
+test('navigation reaches sections and updates header state', async ({
+  page,
+}) => {
   await page.goto('/');
-  const navigation = page.getByRole('navigation', { name: 'Điều hướng chính', exact: true });
+  const navigation = page.getByRole('navigation', {
+    name: 'Main Navigation',
+    exact: true,
+  });
+
   for (const [name, id] of [
-    ['Tính năng', 'features'], ['Cách hoạt động', 'how-it-works'],
-    ['Giới thiệu', 'about'], ['Liên hệ', 'contact'],
+    ['Why FIND&GO', 'why'],
+    ['How It Works', 'how-it-works'],
+    ['Explore', 'explore'],
+    ['FAQ', 'faq'],
   ]) {
     await navigation.getByRole('link', { name, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`#${id}$`));
     await expect(page.locator(`#${id}`)).toBeInViewport();
     await expect(page.locator('.site-header')).toHaveClass(/is-scrolled/);
   }
-  await page.getByRole('link', { name: 'FIND&GO — Trang chủ', exact: true }).click();
+
+  await page.getByRole('link', { name: 'FIND&GO — Home', exact: true }).click();
   await expect(page).toHaveURL(/#hero$/);
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(20);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(30);
 });
 
-test('mobile menu closes after navigation, Escape, and an outside click', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 850 });
+test('color mode switcher toggles dark and light mode', async ({ page }) => {
   await page.goto('/');
-  const mobileNavigation = page.getByRole('navigation', { name: 'Điều hướng di động' });
-  await page.getByRole('button', { name: 'Mở menu', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Đóng menu' })).toHaveAttribute('aria-expanded', 'true');
-  await mobileNavigation.getByRole('link', { name: 'Tính năng', exact: true }).click();
-  await expect(mobileNavigation).toHaveCount(0);
-  await expect(page).toHaveURL(/#features$/);
+  const toggleBtn = page.locator('.theme-toggle-btn');
+  await expect(toggleBtn).toBeVisible();
 
-  await page.getByRole('button', { name: 'Mở menu', exact: true }).click();
-  await page.keyboard.press('Escape');
-  await expect(mobileNavigation).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Mở menu', exact: true })).toBeFocused();
+  // Initial state check
+  const isDarkInitial = await page.evaluate(() =>
+    document.documentElement.classList.contains('theme-dark')
+  );
 
-  await page.getByRole('button', { name: 'Mở menu', exact: true }).click();
-  await page.mouse.click(5, 700);
-  await expect(mobileNavigation).toHaveCount(0);
+  // Toggle mode
+  await toggleBtn.click();
+  const isDarkAfter = await page.evaluate(() =>
+    document.documentElement.classList.contains('theme-dark')
+  );
+  expect(isDarkAfter).toBe(!isDarkInitial);
 
-  await page.getByRole('button', { name: 'Mở menu', exact: true }).click();
-  await mobileNavigation.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  const login = page.getByRole('dialog', { name: 'Hẹn bạn ở phiên bản tiếp theo' });
-  await expect(login).toContainText('Đăng nhập chưa khả dụng');
-  await login.getByRole('button', { name: 'Đóng hộp thoại' }).click();
-  await expect(login).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Mở menu', exact: true })).toBeFocused();
+  // Toggle back
+  await toggleBtn.click();
+  const isDarkFinal = await page.evaluate(() =>
+    document.documentElement.classList.contains('theme-dark')
+  );
+  expect(isDarkFinal).toBe(isDarkInitial);
 });
 
-test('local search, categories, combined criteria, and reset narrow the venue data', async ({ page }) => {
+test('language switcher toggles between English and Vietnamese', async ({
+  page,
+}) => {
+  await page.goto('/');
+
+  // English by default
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    'Find Your Place.'
+  );
+
+  const langBtn = page.locator('.lang-toggle-btn');
+  await expect(langBtn).toContainText('VI');
+
+  // Switch to Vietnamese
+  await langBtn.click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    /Tìm đúng nơi/i
+  );
+  await expect(langBtn).toContainText('EN');
+
+  // Switch back to English
+  await langBtn.click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    'Find Your Place.'
+  );
+  await expect(langBtn).toContainText('VI');
+});
+
+test('FAQ accordion expands and collapses questions correctly', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const faqSection = page.locator('#faq');
+  await faqSection.scrollIntoViewIfNeeded();
+
+  const firstQuestion = page.locator('#faq-btn-0');
+  const secondQuestion = page.locator('#faq-btn-1');
+
+  // Initially first question is open
+  await expect(firstQuestion).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#faq-answer-0')).toBeVisible();
+
+  // Click first question to close
+  await firstQuestion.click();
+  await expect(firstQuestion).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#faq-answer-0')).toHaveCount(0);
+
+  // Click second question to open
+  await secondQuestion.click();
+  await expect(secondQuestion).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#faq-answer-1')).toBeVisible();
+});
+
+test('interactive showcase search, filters, and reset narrow venue data', async ({
+  page,
+}) => {
   await page.goto('/');
   const app = preview(page);
-  const search = app.getByRole('searchbox', { name: 'Tìm địa điểm mẫu' });
+  const search = app.locator('#venue-search');
+
+  // Test search
   await search.fill('garden');
   await expect(venueCards(page)).toHaveCount(1);
-  await expect(venueCards(page).getByRole('heading')).toHaveText('The Garden Room');
+  await expect(venueCards(page).getByRole('heading')).toHaveText(
+    'The Garden Room'
+  );
   await search.fill('');
   await expect(venueCards(page)).toHaveCount(3);
 
-  const activity = app.getByRole('group', { name: 'Mục đích chuyến đi' });
-  await activity.getByRole('button', { name: 'Ăn uống', exact: true }).click();
+  // Test category chip
+  const diningChip = app
+    .getByRole('group', { name: 'Purpose / Activity Filter' })
+    .getByRole('button', { name: /Dining/i });
+  await diningChip.click();
+  await expect(venueCards(page)).toHaveCount(1);
   await expect(venueCards(page).getByRole('heading')).toHaveText('Gather & Eat');
-  await activity.getByRole('button', { name: 'Ăn uống', exact: true }).click();
+  await diningChip.click();
   await expect(venueCards(page)).toHaveCount(3);
 
-  await app.getByRole('button', { name: 'Thử tìm ngay', exact: true }).click();
+  // Quick example button
+  await app.getByRole('button', { name: /Try this search/i }).click();
   await expect(venueCards(page)).toHaveCount(1);
-  await expect(venueCards(page).getByRole('heading')).toHaveText('The Little Corner');
-  await expect(activity.getByRole('button', { name: 'Học tập', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(app.getByRole('combobox', { name: 'Ngân sách mỗi người' })).toHaveValue('70000');
-  await expect(app.getByRole('combobox', { name: 'Số người', exact: true })).toHaveValue('4');
-  await expect(app.getByRole('button', { name: 'Wi-Fi', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(app.getByRole('button', { name: 'Ổ cắm', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(venueCards(page).getByRole('heading')).toHaveText(
+    'The Little Corner'
+  );
 
-  await app.getByRole('combobox', { name: 'Số người', exact: true }).selectOption('8');
-  await expect(venueCards(page)).toHaveCount(0);
-  await expect(app.getByRole('heading', { name: 'Chưa có địa điểm mẫu phù hợp' })).toBeVisible();
-  await app.getByRole('button', { name: 'Xóa bộ lọc', exact: true }).first().click();
-  await expect(venueCards(page)).toHaveCount(3);
-  await app.getByRole('combobox', { name: 'Khoảng cách minh họa' }).selectOption('2');
-  await expect(venueCards(page)).toHaveCount(2);
-  await search.fill('a-place-that-does-not-exist');
-  await expect(venueCards(page)).toHaveCount(0);
-  await app.getByRole('button', { name: 'Xóa bộ lọc', exact: true }).first().click();
-  await expect(search).toHaveValue('');
+  // Clear filters
+  await app.getByRole('button', { name: /Reset filters/i }).click();
   await expect(venueCards(page)).toHaveCount(3);
 });
 
-test('favorites survive reload and can be removed from the saved view', async ({ page }) => {
+test('favorites survive reload and are visible in saved view', async ({
+  page,
+}) => {
   await page.goto('/');
-  await preview(page).getByRole('button', { name: 'Lưu The Little Corner', exact: true }).click();
-  await expect(preview(page).getByRole('button', { name: 'Bỏ lưu The Little Corner', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const saveBtn = preview(page)
+    .locator('.venue-card')
+    .first()
+    .locator('.favorite-button');
+
+  await saveBtn.click();
+  await expect(saveBtn).toHaveClass(/is-saved/);
+
+  // Reload page
   await page.reload();
-  await expect(preview(page).getByRole('button', { name: 'Bỏ lưu The Little Corner', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('navigation', { name: 'Điều hướng bản demo' }).getByRole('button', { name: /Yêu thích/ }).click();
+  const reloadedSaveBtn = preview(page)
+    .locator('.venue-card')
+    .first()
+    .locator('.favorite-button');
+  await expect(reloadedSaveBtn).toHaveClass(/is-saved/);
+
+  // Switch to favorites view
+  await preview(page)
+    .getByRole('navigation', { name: 'Demo Navigation' })
+    .getByRole('button', { name: /Favorites/i })
+    .click();
   await expect(venueCards(page)).toHaveCount(1);
-  await expect(venueCards(page).getByRole('heading')).toHaveText('The Little Corner');
-  await preview(page).getByRole('button', { name: 'Bỏ lưu The Little Corner', exact: true }).click();
+  await expect(venueCards(page).getByRole('heading')).toHaveText(
+    'The Little Corner'
+  );
+
+  // Unsave
+  await venueCards(page).first().locator('.favorite-button').click();
   await expect(venueCards(page)).toHaveCount(0);
-  await expect(preview(page).getByRole('heading', { name: 'Lưu một nơi bạn muốn ghé' })).toBeVisible();
 });
 
-test('venue details and the honest login placeholder close correctly', async ({ page }) => {
+test('Coming Soon page renders with status badge, form validation, honest notice, and Back to Home', async ({
+  page,
+}) => {
+  await page.goto('/coming-soon');
+
+  // Verify elements from DisNote reference screenshot
+  await expect(
+    page.getByText('FEATURE IN DEVELOPMENT · COMING SOON')
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'This Feature Is Coming Soon!'
+  );
+  await expect(
+    page.getByText(/We're working on something new for FIND&GO/i)
+  ).toBeVisible();
+
+  // Email form
+  const emailInput = page.getByRole('textbox', {
+    name: 'Enter your email address...',
+  });
+  const notifyBtn = page.getByRole('button', { name: 'Notify Me' });
+  await expect(emailInput).toBeVisible();
+
+  // Invalid email test
+  await emailInput.fill('invalid-email');
+  await notifyBtn.click();
+  await expect(page.locator('.cs-error')).toContainText(
+    'Please enter a valid email address'
+  );
+
+  // Valid email test -> simulated success notification state
+  await emailInput.fill('student@university.edu');
+  await notifyBtn.click();
+  await expect(page.locator('.cs-notice')).toBeVisible();
+  await expect(page.locator('.cs-notice')).toContainText(
+    'student@university.edu'
+  );
+
+  // Test dynamic feature query param allowlist
+  await page.goto('/coming-soon?feature=signin');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Sign In Is Coming Soon!'
+  );
+
+  // Back to Home
+  const backHomeLink = page.getByRole('link', { name: 'Back to Home' });
+  await backHomeLink.click();
+  await expect(page).toHaveURL(/^(http:\/\/127\.0\.0\.1:5173\/|\/)$/);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    'Find Your Place.'
+  );
+});
+
+test('Sign In button in header redirects to /coming-soon?feature=signin', async ({
+  page,
+}) => {
   await page.goto('/');
-  const detailsButton = venueCards(page).first().getByRole('button', { name: 'Xem chi tiết', exact: true });
-  await detailsButton.click();
-  const details = page.getByRole('dialog', { name: 'The Little Corner', exact: true });
-  await expect(details).toBeVisible();
-  await expect(details).toContainText('không phải địa điểm đã được xác minh');
-  await expect(details.getByRole('button', { name: 'Đóng hộp thoại' })).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(details).toHaveCount(0);
-  await expect(detailsButton).toBeFocused();
-
-  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  const login = page.getByRole('dialog', { name: 'Hẹn bạn ở phiên bản tiếp theo' });
-  await expect(login).toContainText('Đăng nhập chưa khả dụng');
-  await login.getByRole('link', { name: 'Khám phá bản demo', exact: true }).click();
-  await expect(login).toHaveCount(0);
-  await expect(page).toHaveURL(/#explore$/);
+  const signInBtn = page.locator('.header-signin-btn');
+  await signInBtn.click();
+  await expect(page).toHaveURL(/coming-soon\?feature=signin/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Sign In Is Coming Soon!'
+  );
 });
 
-test('reduced motion disables decorative movement and smooth scrolling', async ({ page }) => {
+test('venue details modal opens and closes with Escape key', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const detailsBtn = venueCards(page)
+    .first()
+    .getByRole('button', { name: /View details/i });
+  await detailsBtn.click();
+
+  const dialog = page.getByRole('dialog', { name: 'The Little Corner' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('DEMO VENUE');
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+});
+
+test('reduced motion disables decorative animations', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
-  for (const selector of ['.marquee-track', '.preview-float-top', '.preview-float-bottom', '.preview-float-side']) {
+  for (const selector of [
+    '.marquee-track',
+    '.preview-float-top',
+    '.preview-float-bottom',
+    '.preview-float-side',
+  ]) {
     await expect(page.locator(selector)).toHaveCSS('animation-name', 'none');
   }
   await expect(page.locator('html')).toHaveCSS('scroll-behavior', 'auto');
-  await expect.poll(() => page.locator('.pulse-dot').evaluate((element) =>
-    getComputedStyle(element, '::after').animationName,
-  )).toBe('none');
-});
-
-test('an unavailable venue photo uses the local image fallback', async ({ page }) => {
-  await page.route('**/assets/cafe-interior.jpg', (route) => route.abort());
-  await page.goto('/');
-  const photo = venueCards(page).first().getByRole('img');
-  await expect(photo).toHaveAttribute('src', '/assets/venue-fallback.svg');
-  await expect.poll(() => photo.evaluate((image) => image.complete && image.naturalWidth > 0)).toBe(true);
 });

@@ -1,171 +1,418 @@
-import { Icon, Brand } from './ui'
+import { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import { Brand, Icon } from './ui';
 
-const features = [
-  {
-    icon: 'compass',
-    tag: 'Khám phá',
-    title: 'Khám phá theo mục đích',
-    description: 'Tìm địa điểm cho một buổi học bài, bữa ăn, cuộc hẹn hay những lần tụ tập cùng bạn bè.',
-  },
-  {
-    icon: 'sliders',
-    tag: 'Cá nhân hóa',
-    title: 'Bộ lọc phù hợp',
-    description: 'Thu hẹp lựa chọn theo ngân sách, khoảng cách, số người và những tiện ích bạn quan tâm.',
-  },
-  {
-    icon: 'heart',
-    tag: 'Yêu thích',
-    title: 'Lưu địa điểm yêu thích',
-    description: 'Giữ những địa điểm thú vị trong một danh sách để dễ dàng tìm lại khi lên kế hoạch cho lần đi tiếp theo.',
-  },
-]
+// SECTION 03 — The Problem
+export function ProblemSection() {
+  const { strings } = useLanguage();
+  const p = strings.problem;
 
-export function Features() {
+  const problemCards = [
+    {
+      icon: 'search',
+      title: p.card1Title,
+      description: p.card1Desc,
+      number: '01',
+    },
+    {
+      icon: 'sliders',
+      title: p.card2Title,
+      description: p.card2Desc,
+      number: '02',
+    },
+    {
+      icon: 'users',
+      title: p.card3Title,
+      description: p.card3Desc,
+      number: '03',
+    },
+  ];
+
   return (
-    <section id="features" className="section-block section-white section-word" aria-labelledby="features-title">
-      <span className="section-background-word section-background-word-right" aria-hidden="true">DISCOVER</span>
-      <div className="shell section-content">
-        <div className="section-heading">
-          <p className="section-eyebrow">TÍNH NĂNG</p>
-          <h2 id="features-title">Tìm đúng địa điểm cho mọi cuộc hẹn.</h2>
-          <p>Từ một buổi học yên tĩnh đến cuộc gặp gỡ bạn bè, FIND&GO giúp bạn thu hẹp lựa chọn theo những tiêu chí quan trọng.</p>
+    <section id="problem" className="section-block section-problem" aria-labelledby="problem-title">
+      <div className="shell">
+        <div className="section-heading text-center">
+          <p className="section-eyebrow">{p.eyebrow}</p>
+          <h2 id="problem-title">{p.title}</h2>
+          <p className="section-sub">{p.description}</p>
         </div>
-        <div className="feature-grid">
-          {features.map((feature, index) => (
-            <article className={`feature-card feature-card-${index + 1}`} key={feature.title}>
-              <span className="feature-tag">{feature.tag}</span>
-              <span className="feature-icon"><Icon name={feature.icon} size={24} /></span>
-              <h3>{feature.title}</h3>
-              <p>{feature.description}</p>
-              <a className="feature-link" href="#explore">Khám phá bản demo <Icon name="chevron-right" size={17} /></a>
+
+        <div className="problem-grid">
+          {problemCards.map((card) => (
+            <article className="problem-card" key={card.title}>
+              <div className="problem-card-header">
+                <span className="problem-icon">
+                  <Icon name={card.icon} size={22} />
+                </span>
+                <span className="problem-num">{card.number}</span>
+              </div>
+              <h3>{card.title}</h3>
+              <p>{card.description}</p>
             </article>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-// Các giao diện nhỏ minh họa từng bước; bản demo tương tác nằm ở phần khám phá.
-function ActivityPreview() {
+// SECTION 04 — Introducing FIND&GO
+export function IntroducingSection() {
+  const { strings } = useLanguage();
+  const intro = strings.intro;
+
+  const icons = ['compass', 'sliders', 'map', 'wallet', 'heart'];
+
   return (
-    <div className="step-preview">
-      <div className="step-preview-title"><Icon name="compass" size={15} /> Hôm nay, bạn muốn...</div>
-      <div className="step-activities">
-        {[['book', 'Học bài'], ['utensils', 'Ăn uống'], ['compass', 'Đi chơi']].map(([icon, label], index) => (
-          <div className={`step-activity ${index === 0 ? 'step-activity-selected' : ''}`} key={label}>
-            <Icon name={icon} size={21} />
-            <span>{label}</span>
-            {index === 0 && <span className="step-activity-check"><Icon name="check" size={9} /></span>}
+    <section id="introducing" className="section-block section-white section-word" aria-labelledby="intro-title">
+      <span className="section-background-word section-background-word-left" aria-hidden="true">
+        CONNECT
+      </span>
+      <div className="shell section-content intro-layout">
+        <div className="intro-copy">
+          <p className="section-eyebrow">{intro.eyebrow}</p>
+          <h2 id="intro-title">{intro.title}</h2>
+          <p className="intro-description">{intro.description}</p>
+
+          <div className="intro-points-list">
+            {intro.points.map((pt, idx) => (
+              <div className="intro-point-item" key={pt.title}>
+                <span className="intro-point-icon">
+                  <Icon name={icons[idx % icons.length]} size={18} />
+                </span>
+                <div>
+                  <h4>{pt.title}</h4>
+                  <p>{pt.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="step-selection-note"><span /> Một góc yên tĩnh để tập trung</div>
-    </div>
-  )
-}
 
-function FiltersPreview() {
-  return (
-    <div className="step-preview">
-      <div className="step-preview-title"><Icon name="sliders" size={15} /> Tiêu chí của bạn</div>
-      <div className="step-filter-row"><span>Ngân sách / người</span><strong>Dưới 70.000đ</strong></div>
-      <div className="step-budget-track" aria-hidden="true"><span /></div>
-      <div className="step-filter-row"><span>Số người</span><strong><Icon name="users" size={13} /> 4 người</strong></div>
-      <div className="step-amenities"><span><Icon name="wifi" size={12} /> Wi-Fi <Icon name="check" size={10} /></span><span><Icon name="plug" size={12} /> Ổ cắm <Icon name="check" size={10} /></span></div>
-    </div>
-  )
-}
-
-function VenuePreview() {
-  return (
-    <div className="step-preview">
-      <div className="step-preview-title"><Icon name="pin" size={15} /> Gợi ý cho buổi học <span className="step-demo-tag">Demo</span></div>
-      {[
-        { name: 'The Little Corner', detail: 'Yên tĩnh · Wi-Fi · Ổ cắm', image: '/assets/cafe-interior.jpg' },
-        { name: 'The Garden Room', detail: 'Không gian xanh · Wi-Fi', image: '/assets/garden-cafe.jpg' },
-      ].map((venue, index) => (
-        <div className="step-venue" key={venue.name}>
-          <img src={venue.image} alt="" loading="lazy" width="42" height="42" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/assets/venue-fallback.svg' }} />
-          <div><strong>{venue.name}</strong><span>{venue.detail}</span></div>
-          <span className={index === 0 ? 'step-saved-heart' : ''}><Icon name="heart" size={15} /></span>
+          <div className="intro-cta-row">
+            <a href="#explore" className="btn btn-primary">
+              <span>{strings.hero.primaryBtn}</span>
+              <Icon name="arrow-right" size={17} />
+            </a>
+          </div>
         </div>
-      ))}
-    </div>
-  )
+
+        <div className="intro-visual">
+          <div className="intro-card-stack">
+            <div className="intro-stack-card intro-card-1">
+              <div className="intro-card-badge">
+                <Icon name="compass" size={14} />
+                <span>{intro.stack?.card1Badge || 'Purpose-Driven'}</span>
+              </div>
+              <p className="intro-card-highlight">{intro.stack?.card1Title || 'Solo Study or Group Hangout?'}</p>
+              <div className="intro-tag-cloud">
+                <span className="active-tag">{intro.stack?.card1Tag1 || 'Quiet Corner'}</span>
+                <span>{intro.stack?.card1Tag2 || 'Plugs available'}</span>
+                <span>{intro.stack?.card1Tag3 || 'Strong Wi-Fi'}</span>
+              </div>
+            </div>
+
+            <div className="intro-stack-card intro-card-2">
+              <div className="intro-card-badge intro-badge-teal">
+                <Icon name="wallet" size={14} />
+                <span>{intro.stack?.card2Badge || 'Strict Budget Filters'}</span>
+              </div>
+              <p className="intro-card-highlight">{intro.stack?.card2Title || 'Transparent Student Pricing'}</p>
+              <div className="intro-price-slider">
+                <span>{intro.stack?.card2SliderLabel || 'Budget ceiling'}</span>
+                <strong>{intro.stack?.card2SliderValue || '< 70,000 VND / person'}</strong>
+              </div>
+            </div>
+
+            <div className="intro-stack-card intro-card-3">
+              <div className="intro-card-badge intro-badge-cyan">
+                <Icon name="heart" size={14} />
+                <span>{intro.stack?.card3Badge || 'Zero Guesswork'}</span>
+              </div>
+              <p className="intro-card-highlight">{intro.stack?.card3Title || 'Save, Compare & Go Together'}</p>
+              <div className="intro-metric-row">
+                <span>{intro.stack?.card3Metric1 || '⚡ Instant Filter'}</span>
+                <span>{intro.stack?.card3Metric2 || '📍 Nearby Campus'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
+// SECTION 05 — How It Works
 export function HowItWorks() {
+  const { strings } = useLanguage();
+  const hw = strings.howItWorks;
+
   const steps = [
-    { icon: 'compass', title: 'Chọn nhu cầu', description: 'Bạn cần một góc học bài, một bữa ăn ngon hay một nơi để đi chơi? Bắt đầu từ điều bạn muốn làm.', preview: <ActivityPreview /> },
-    { icon: 'sliders', title: 'Thiết lập tiêu chí', description: 'Chọn ngân sách, số người và tiện ích cần thiết để tìm không gian phù hợp với buổi hẹn của bạn.', preview: <FiltersPreview /> },
-    { icon: 'pin', title: 'Khám phá và lựa chọn', description: 'Xem các gợi ý, tìm hiểu chi tiết và lưu lại những nơi thú vị cho hành trình tiếp theo.', preview: <VenuePreview /> },
-  ]
+    {
+      num: '01',
+      icon: 'compass',
+      title: hw.step1Title,
+      description: hw.step1Desc,
+      tag: hw.step1Tag || 'Step 1',
+    },
+    {
+      num: '02',
+      icon: 'sliders',
+      title: hw.step2Title,
+      description: hw.step2Desc,
+      tag: hw.step2Tag || 'Step 2',
+    },
+    {
+      num: '03',
+      icon: 'pin',
+      title: hw.step3Title,
+      description: hw.step3Desc,
+      tag: hw.step3Tag || 'Step 3',
+    },
+  ];
 
   return (
     <section id="how-it-works" className="section-block section-soft" aria-labelledby="steps-title">
       <div className="shell">
-        <div className="section-heading">
-          <p className="section-eyebrow">CÁCH HOẠT ĐỘNG</p>
-          <h2 id="steps-title">Chọn đúng địa điểm chỉ với 3 bước.</h2>
+        <div className="section-heading text-center">
+          <p className="section-eyebrow">{hw.eyebrow}</p>
+          <h2 id="steps-title">{hw.title}</h2>
+          <p className="section-sub">{hw.subtitle}</p>
         </div>
+
         <div className="step-grid">
           <span className="step-connecting-line" aria-hidden="true" />
-          {steps.map((step, index) => (
+          {steps.map((step) => (
             <article className="step-card" key={step.title}>
-              <div className="step-heading"><span className="step-number">0{index + 1}</span><span className="step-icon"><Icon name={step.icon} size={20} /></span></div>
+              <div className="step-heading">
+                <span className="step-number">{step.num}</span>
+                <span className="step-icon">
+                  <Icon name={step.icon} size={22} />
+                </span>
+              </div>
+              <span className="step-pill">{step.tag}</span>
               <h3>{step.title}</h3>
               <p>{step.description}</p>
-              {step.preview}
-              <span className="step-preview-caption">Minh họa trải nghiệm</span>
             </article>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-export function About() {
-  const values = [
-    { icon: 'compass', title: 'Đúng nhu cầu', description: 'Bắt đầu từ mục đích của bạn để thu hẹp lựa chọn.' },
-    { icon: 'sliders', title: 'Dễ lựa chọn', description: 'Xem các tiêu chí quan trọng trong một giao diện trực quan.' },
-    { icon: 'heart', title: 'Thêm trải nghiệm', description: 'Lưu lại những địa điểm thú vị cho những lần gặp gỡ tiếp theo.' },
-  ]
+// SECTION 07 — Discover by Purpose
+export function DiscoverByPurpose({ onSelectPurpose }) {
+  const { strings } = useLanguage();
+  const dp = strings.purpose;
 
   return (
-    <section id="about" className="section-block section-white section-word" aria-labelledby="about-title">
-      <span className="section-background-word section-background-word-left" aria-hidden="true">JOURNEY</span>
-      <div className="shell section-content about-grid">
-        <div className="about-copy">
-          <p className="section-eyebrow">VỀ FIND&GO</p>
-          <h2 id="about-title">Mỗi cuộc hẹn đều bắt đầu từ một địa điểm phù hợp.</h2>
-          <p className="about-description">FIND&GO được phát triển với mong muốn giúp sinh viên dễ dàng khám phá và lựa chọn địa điểm phù hợp với nhu cầu thực tế. Thay vì chỉ tìm kiếm bằng tên địa điểm, người dùng có thể bắt đầu từ mục đích, ngân sách, khoảng cách và những tiện ích mình quan tâm.</p>
-          <div className="about-audience">
-            {['Sinh viên', 'Nhóm bạn', 'Người thích khám phá'].map((label) => <span key={label}><Icon name="check" size={16} />{label}</span>)}
-          </div>
-          <a className="btn btn-primary" href="#explore">Khám phá FIND&GO <Icon name="arrow-right" size={19} /></a>
+    <section id="purpose" className="section-block section-white" aria-labelledby="purpose-title">
+      <div className="shell">
+        <div className="section-heading text-center">
+          <p className="section-eyebrow">{dp.eyebrow}</p>
+          <h2 id="purpose-title">{dp.title}</h2>
+          <p className="section-sub">{dp.subtitle}</p>
         </div>
-        <div className="about-values">
-          {values.map((value, index) => (
-            <article className="about-value" key={value.title}>
-              <span className="about-value-icon"><Icon name={value.icon} size={22} /></span>
-              <div>
-                <div className="about-value-title"><h3>{value.title}</h3><span>0{index + 1}</span></div>
-                <p>{value.description}</p>
+
+        <div className="purpose-grid">
+          {dp.cards.map((card) => (
+            <article className="purpose-card" key={card.id}>
+              <div className="purpose-card-media">
+                <img src={card.img} alt={card.title} loading="lazy" />
+                <span className="purpose-badge">{card.tag}</span>
+              </div>
+              <div className="purpose-card-body">
+                <h3>{card.title}</h3>
+                <p>{card.desc}</p>
+                <a
+                  href="#explore"
+                  className="purpose-link"
+                  onClick={() => onSelectPurpose && onSelectPurpose(card.id)}
+                >
+                  <span>{dp.exploreCategoryBtn}</span>
+                  <Icon name="arrow-right" size={16} />
+                </a>
               </div>
             </article>
           ))}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-export function FinalCta() {
+// SECTION 08 — Why FIND&GO
+export function WhyFindAndGo() {
+  const { strings } = useLanguage();
+  const w = strings.why;
+
+  const cards = [
+    { icon: 'compass', title: w.card1Title, desc: w.card1Desc },
+    { icon: 'wallet', title: w.card2Title, desc: w.card2Desc },
+    { icon: 'plug', title: w.card3Title, desc: w.card3Desc },
+    { icon: 'sliders', title: w.card4Title, desc: w.card4Desc },
+  ];
+
   return (
-    <section className="section-block section-soft" aria-labelledby="cta-title">
+    <section id="why" className="section-block section-soft" aria-labelledby="why-title">
+      <div className="shell">
+        <div className="section-heading text-center">
+          <p className="section-eyebrow">{w.eyebrow}</p>
+          <h2 id="why-title">{w.title}</h2>
+          <p className="section-sub">{w.subtitle}</p>
+        </div>
+
+        <div className="why-grid">
+          {cards.map((c) => (
+            <article className="why-card" key={c.title}>
+              <span className="why-icon">
+                <Icon name={c.icon} size={24} />
+              </span>
+              <h3>{c.title}</h3>
+              <p>{c.desc}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// SECTION 09 — Everyday Use Cases
+export function EverydayUseCases() {
+  const { strings } = useLanguage();
+  const uc = strings.useCases;
+
+  const scenarios = [
+    {
+      title: uc.card1Title,
+      desc: uc.card1Desc,
+      badge: uc.card1Badge,
+      img: '/assets/cafe-interior.jpg',
+      icon: 'book',
+    },
+    {
+      title: uc.card2Title,
+      desc: uc.card2Desc,
+      badge: uc.card2Badge,
+      img: '/assets/friends-bistro.jpg',
+      icon: 'utensils',
+    },
+    {
+      title: uc.card3Title,
+      desc: uc.card3Desc,
+      badge: uc.card3Badge,
+      img: '/assets/garden-cafe.jpg',
+      icon: 'compass',
+    },
+  ];
+
+  return (
+    <section id="use-cases" className="section-block section-white" aria-labelledby="usecases-title">
+      <div className="shell">
+        <div className="section-heading text-center">
+          <p className="section-eyebrow">{uc.eyebrow}</p>
+          <h2 id="usecases-title">{uc.title}</h2>
+          <p className="section-sub">{uc.subtitle}</p>
+        </div>
+
+        <div className="use-case-grid">
+          {scenarios.map((item) => (
+            <article className="use-case-card" key={item.title}>
+              <div className="use-case-image">
+                <img src={item.img} alt={item.title} loading="lazy" />
+                <span className="use-case-badge">
+                  <Icon name={item.icon} size={14} />
+                  <span>{item.badge}</span>
+                </span>
+              </div>
+              <div className="use-case-content">
+                <h3>{item.title}</h3>
+                <p>{item.desc}</p>
+                <a href="#explore" className="use-case-link">
+                  <span>{strings.hero.primaryBtn}</span>
+                  <Icon name="chevron-right" size={16} />
+                </a>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// SECTION 10 — FAQ Accordion
+export function FaqSection() {
+  const { strings } = useLanguage();
+  const faq = strings.faq;
+  const [openIndex, setOpenIndex] = useState(0);
+
+  const toggleItem = (idx) => {
+    setOpenIndex(openIndex === idx ? -1 : idx);
+  };
+
+  return (
+    <section id="faq" className="section-block section-soft" aria-labelledby="faq-title">
+      <div className="shell faq-shell">
+        <div className="section-heading text-center">
+          <p className="section-eyebrow">{faq.eyebrow}</p>
+          <h2 id="faq-title">{faq.title}</h2>
+          <p className="section-sub">{faq.subtitle}</p>
+        </div>
+
+        <div className="faq-accordion" role="region" aria-label="FAQ Accordion">
+          {faq.items.map((item, index) => {
+            const isOpen = openIndex === index;
+            return (
+              <div className={`faq-item ${isOpen ? 'is-open' : ''}`} key={item.q}>
+                <button
+                  className="faq-question"
+                  onClick={() => toggleItem(index)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${index}`}
+                  id={`faq-btn-${index}`}
+                >
+                  <span className="faq-q-text">{item.q}</span>
+                  <span className="faq-icon-wrap" aria-hidden="true">
+                    <Icon name={isOpen ? 'chevron-down' : 'chevron-right'} size={18} />
+                  </span>
+                </button>
+                {isOpen && (
+                  <div
+                    id={`faq-answer-${index}`}
+                    className="faq-answer"
+                    role="region"
+                    aria-labelledby={`faq-btn-${index}`}
+                  >
+                    <p>{item.a}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// SECTION 11 — Final Call to Action
+export function FinalCta({ onNavigate }) {
+  const { strings } = useLanguage();
+  const c = strings.cta;
+
+  const handleComingSoon = (e) => {
+    e.preventDefault();
+    if (onNavigate) {
+      onNavigate('/coming-soon');
+    } else {
+      window.location.href = '/coming-soon';
+    }
+  };
+
+  return (
+    <section className="section-block section-cta-wrap" aria-labelledby="cta-title">
       <div className="shell">
         <div className="cta-panel">
           <span className="cta-noise" aria-hidden="true" />
@@ -180,26 +427,151 @@ export function FinalCta() {
             <circle cx="45" cy="135" r="8" />
           </svg>
           <div className="cta-content">
-            <span className="cta-icon"><Icon name="compass" size={30} /></span>
-            <h2 id="cta-title">Sẵn sàng tìm địa điểm tiếp theo của bạn?</h2>
-            <p>Dù là học bài, ăn uống hay tụ tập bạn bè, hãy bắt đầu hành trình khám phá với FIND&GO.</p>
-            <div className="cta-actions"><a className="btn btn-white" href="#explore">Khám phá ngay <Icon name="arrow-right" size={19} /></a><a className="btn btn-glass" href="#about">Tìm hiểu thêm</a></div>
+            <span className="cta-icon">
+              <Icon name="compass" size={32} />
+            </span>
+            <h2 id="cta-title">{c.title}</h2>
+            <p>{c.description}</p>
+            <div className="cta-actions">
+              <a className="btn btn-white" href="#explore">
+                {c.primaryBtn}
+                <Icon name="arrow-right" size={19} />
+              </a>
+              <a className="btn btn-glass" href="/coming-soon" onClick={handleComingSoon}>
+                {c.secondaryBtn}
+              </a>
+            </div>
           </div>
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-export function Footer() {
+// SECTION 12 — Footer
+export function Footer({ onNavigate }) {
+  const { strings } = useLanguage();
+  const f = strings.footer;
+
+  const navigateTo = (e, target) => {
+    if (target.startsWith('#')) {
+      if (window.location.pathname === '/coming-soon') {
+        e.preventDefault();
+        if (onNavigate) {
+          onNavigate('/' + target);
+        } else {
+          window.location.href = '/' + target;
+        }
+      }
+    } else if (target.startsWith('/coming-soon')) {
+      e.preventDefault();
+      if (onNavigate) {
+        onNavigate(target);
+      } else {
+        window.location.href = target;
+      }
+    }
+  };
+
   return (
-    <footer id="contact" className="footer">
-      <div className="shell footer-content">
-        <div className="footer-brand"><a href="#hero" aria-label="FIND&GO — về đầu trang"><Brand /></a><span>Find your place. Go your way.</span></div>
-        <nav className="footer-links" aria-label="Điều hướng cuối trang"><a href="#about">Giới thiệu</a><a href="#features">Tính năng</a><a href="#how-it-works">Cách hoạt động</a><a href="#contact">Liên hệ</a></nav>
-        <p className="footer-credit">Developed by <strong>SEEKERS.</strong></p>
+    <footer id="contact" className="site-footer">
+      <div className="shell footer-shell">
+        <div className="footer-columns">
+          {/* Col 1: Brand */}
+          <div className="footer-col footer-col-brand">
+            <a
+              href="#hero"
+              className="footer-brand-link"
+              onClick={(e) => navigateTo(e, '#hero')}
+            >
+              <Brand size={36} />
+            </a>
+            <p className="footer-tagline">{f.tagline}</p>
+            <p className="footer-credit-line">
+              <strong>{f.credit}</strong>
+            </p>
+          </div>
+
+          {/* Col 2: Explore */}
+          <div className="footer-col">
+            <h4>{f.colExplore}</h4>
+            <ul>
+              <li>
+                <a href="#hero" onClick={(e) => navigateTo(e, '#hero')}>
+                  {f.linkHome}
+                </a>
+              </li>
+              <li>
+                <a href="#explore" onClick={(e) => navigateTo(e, '#explore')}>
+                  {f.linkDiscover}
+                </a>
+              </li>
+              <li>
+                <a href="#purpose" onClick={(e) => navigateTo(e, '#purpose')}>
+                  {f.linkCategories}
+                </a>
+              </li>
+              <li>
+                <a href="#how-it-works" onClick={(e) => navigateTo(e, '#how-it-works')}>
+                  {f.linkHowItWorks}
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 3: Support */}
+          <div className="footer-col">
+            <h4>{f.colSupport}</h4>
+            <ul>
+              <li>
+                <a href="#faq" onClick={(e) => navigateTo(e, '#faq')}>
+                  {f.linkFaq}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/coming-soon?feature=contact"
+                  onClick={(e) => navigateTo(e, '/coming-soon?feature=contact')}
+                >
+                  {f.linkContact}
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4: Company */}
+          <div className="footer-col">
+            <h4>{f.colCompany}</h4>
+            <ul>
+              <li>
+                <a href="#introducing" onClick={(e) => navigateTo(e, '#introducing')}>
+                  {f.linkAbout}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/coming-soon?feature=privacy"
+                  onClick={(e) => navigateTo(e, '/coming-soon?feature=privacy')}
+                >
+                  {f.linkPrivacy}
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/coming-soon?feature=terms"
+                  onClick={(e) => navigateTo(e, '/coming-soon?feature=terms')}
+                >
+                  {f.linkTerms}
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="footer-bottom">
+          <p className="footer-copyright">{f.copyright}</p>
+        </div>
       </div>
-      <p className="shell footer-contact-note">Thông tin liên hệ sẽ được cập nhật khi dự án ra mắt.</p>
     </footer>
-  )
+  );
 }
